@@ -1,0 +1,18 @@
+LOCALAPPDATA=C:\Users\a\AppData\Local
+could not find "vswhere"
+Call_If_Exists "..\bin\VCVARS32.BAT"
+###
+### Using 'msvc' toolset.
+###
+
+C:\Users\a\source\lib\boost_1_73_0\tools\build\src\engine>cl /nologo /Zi /MT /TP /Feb2 /wd4996 /Ox /GL   -DNDEBUG  builtins.cpp class.cpp command.cpp compile.cpp constants.cpp cwd.cpp debug.cpp debugger.cpp execcmd.cpp execnt.cpp filent.cpp filesys.cpp frames.cpp function.cpp glob.cpp hash.cpp hcache.cpp hdrmacro.cpp headers.cpp jam.cpp jambase.cpp jamgram.cpp lists.cpp make.cpp make1.cpp md5.cpp mem.cpp modules.cpp native.cpp object.cpp option.cpp output.cpp parse.cpp pathnt.cpp pathsys.cpp regexp.cpp rules.cpp scan.cpp search.cpp jam_strings.cpp subst.cpp sysinfo.cpp timestamp.cpp variable.cpp w32_getreg.cpp modules/order.cpp modules/path.cpp modules/property-set.cpp modules/regex.cpp modules/sequence.cpp modules/set.cpp /link kernel32.lib advapi32.lib user32.lib 
+
+C:\Users\a\source\lib\boost_1_73_0\tools\build\src\engine>dir *.exe 
+ Volume in drive C has no label.
+ Volume Serial Number is 86C1-483B
+
+ Directory of C:\Users\a\source\lib\boost_1_73_0\tools\build\src\engine
+
+
+C:\Users\a\source\lib\boost_1_73_0\tools\build\src\engine>copy /b .\b2.exe .\bjam.exe 
+The system cannot find the file specified.
