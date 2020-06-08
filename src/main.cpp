@@ -1,6 +1,5 @@
 // #include "SoundFileReaderMp3.hpp"
 #include "lib.hpp"
-//#include <boost>
 
 int main() {
   // массив пар названий и путей до аудиофайлов
@@ -33,8 +32,8 @@ int main() {
   // объект списка воспроизведения
   nana::listbox playlistbox{fm};
   // добавляем заголовки
-  playlistbox.append_header("Name", 300 * 0.94);
-  playlistbox.append_header("Path", 300 * 0.94);
+  playlistbox.append_header("Name", static_cast<unsigned int>(300.0 * 0.94));
+  playlistbox.append_header("Path", static_cast<unsigned int>(300.0 * 0.94));
   // добавляем наименование плейлиста в поле для имени группы в объекте списка
   playlistbox.append("<unnamed playlist>");
   // вклбчаем автоматическую перерисовку объекта
@@ -82,7 +81,8 @@ int main() {
   // прокрутка воспроизведения
   nana::slider seeker{fm, true};
   // максимальное значение прокрутки (изначально будет 0)
-  seeker.maximum(music.getDuration().asMilliseconds());
+  seeker.maximum(
+      static_cast<unsigned int>(music.getDuration().asMilliseconds()));
   // отображение времени воспроизведения
   nana::label timestamp{fm, true};
   timestamp.text_align(nana::align::center);
@@ -95,44 +95,12 @@ int main() {
 
   // далее следуют объявления обработчиков событий
   // обработчик обновления таймера
-  update_timer.elapse([&seeker, &music, &timestamp, &play_pause, &lab, &state,
-                       &files, &current_playing, &play_next] {
-    // проверяем статус объекта плеера (если музыка играет ...)
-    if (music.getStatus() == sf::Music::Playing) {
-      // текущая позиция по аудиофайлу относительно начала
-      auto offset = music.getPlayingOffset();
-      // устанавливаем трекер на значение позиции в миллисекундах
-      seeker.value(offset.asMilliseconds());
-      // общее количество секунд позиции целым числом
-      int sec = offset.asSeconds();
-      // устанавливаем строку в объект для отображения, предварительно отформатировав
-      timestamp.caption(formatTime(sec));
-    }
-    // проверяем (осталось ли до конца аудиофайла меньше 150 миллисекунд и
-    // воспроизводится ли что-нибудь вообще) или сработал флаг из строки 131
-    if ((music.getDuration().asMilliseconds() -
-                 music.getPlayingOffset().asMilliseconds() <
-             150 &&
-         current_playing != -1) ||
-        play_next) {
-      // если режим воспроизведения - воспроизводить все
-      if (state == repeat_mode_t::repeat_all) {
-        // если номер след аудииофайла находтся в пределах индексов списка
-        if (++current_playing < files.size()) {
-          // открываем и воспроизводим аудиофайл по индексу
-          openPlay(music, files[current_playing], seeker, lab, play_pause,
-                   play_next);
-        } else
-          // иначе устанавливаем индекс на -1, чтобы остановить повтор
-          current_playing = -1;
-      }
-    } else if (current_playing == -1) {
-      // устанавливаем надпись на кнопке
-      play_pause.caption("Stop");
-      // останавливааем воспроизведение
-      music.stop();
-    }
+  update_timer.elapse([&] {
+    timer_update_event(seeker, music, play_pause, lab, state, files, timestamp,
+                       current_playing, play_next);
   });
+  // update_timer.elapse(std::bind(&timer_update_event, seeker, music,
+  // play_pause, lab, state, files, timestamp, current_playing, play_next));
 
   // действие при изменинии значания полосы прокрутки пользователем
   seeker.events().value_changed([&seeker, &music] {
@@ -140,7 +108,7 @@ int main() {
     auto val = seeker.value();
     // переводим в объект типа sf::Time считая, что val показывает значение в
     // миллисекундах, и перематываем музыку на это значение от начала
-    music.setPlayingOffset(sf::milliseconds(val));
+    music.setPlayingOffset(sf::milliseconds(static_cast<int>(val)));
   });
 
   // действие при двойном клике на элемент списка воспроизведения
@@ -154,9 +122,9 @@ int main() {
     if (sel.size() > 0) {
       // получаем индекс этого значения в списке (а соответственно и в массиве
       // files)
-      current_playing = sel[0].item;
+      current_playing = static_cast<int>(sel[0].item);
       // получаем пару имя и путь до файла по индексу
-      auto i = files[current_playing];
+      auto i = files[static_cast<unsigned long>(current_playing)];
 
       // загружаем и запускаем
       openPlay(music, i, seeker, lab, play_pause, play_next);
@@ -166,59 +134,8 @@ int main() {
   });
 
   // действие при нажатии на кнопку "открыть файл"
-  btn.events().click([&fm, &filedialog, &lab, &music, &seeker, &play_pause,
-                      &files, &playlistbox, &current_playing, &play_next] {
-    // показываем окно открытия файла и записываем путь до файла/ов как
-    // результат
-    auto paths = filedialog.show();
-    // устанавливаем индекс воспроизведения на -1, грубо говоря обнуляем
-    current_playing = -1;
-    // очищаем предыдущий массив
-    files.clear();
-    // очищаем список пред воспроизведения
-    playlistbox.clear(1);
-    // устанавливаем имя по умолчанию
-    playlistbox.at(1).text("<unnamed playlist>");
-
-    // строка имени плейлиста
-    std::stringstream name{};
-    name.str("");
-
-    // проходимся по всем выбранным файлам
-    for (auto file : paths) {
-      // если расширени файла .plst
-      if (file.extension().string() == ".plst") {
-        // открываем файл для чтения
-        std::fstream filestream{file, std::ios_base::in};
-        // если не открылся - пропускаем
-        if (!filestream.is_open())
-          continue;
-        // добавляем в имя плейлиста имя текущего файла без расширения и пробел
-        // в конце
-        name << file.filename().replace_extension() << " ";
-        // цикл до конца файла
-        do {
-          // считываем пару строк (в первой имя, во сторой путь)
-          std::pair<std::stringstream, std::stringstream> fnpair{};
-          if (!(filestream >> fnpair))
-            break;
-          // добавляем в массив
-          files.push_back({fnpair.first.str(), fnpair.second.str()});
-        } while (!filestream.eof());
-        // закрываем файл
-        filestream.close();
-      } else
-        // иначе просто добавляем файл в массив
-        files.push_back(
-            {file.filename().replace_extension().string(), file.string()});
-    }
-    // выбираем категорию 1 (плейлист)
-    auto cat = playlistbox.at(1);
-    // добавляем в категорию 1 списка имена и пути до аудиофайлов
-    for (auto i : files)
-      cat.append({i.first, i.second});
-    // обнуляем флаг
-    play_next = 0;
+  btn.events().click([&] {
+    open_playlist(filedialog, current_playing, files, playlistbox, play_next);
   });
 
   // действие при нажатии на кнопку play/pause/stop
@@ -235,44 +152,29 @@ int main() {
       play_pause.caption("Play");
       // проверяем остановлена ли музыка (если просто стояла на паузе будет
       // sf::SoundSource::Paused)
-      if (music.getStatus() == sf::SoundSource::Stopped)
+      if (music.getStatus() == sf::SoundSource::Stopped) {
         // проверяем есть ли загруженные файлы
         if (files.size() > 0) {
           // включаем первый из массива
           current_playing = 0;
-          openPlay(music, files[current_playing], seeker, lab, play_pause,
-                   play_next);
+          openPlay(music, files[static_cast<unsigned long>(current_playing)],
+                   seeker, lab, play_pause, play_next);
         } else {
           // устанавливаем надпись о том, что треков для воспроизведения не
           // обнаружено
           lab.caption("No files to play");
           return;
         }
+      }
       // запускаем
       music.play();
     }
   });
 
   // действия при клике на кнопку сохранить
-  save_list.events().click(
-      [&save_list, &fm, &playlistbox, &files, &listsavedialog] {
-        // показываем окно для выбора имени файла
-        auto file = listsavedialog.show();
-        // если не выбрали выходим из функции обработчика
-        if (file.size() == 0)
-          return;
-        // открываем выбранный файл на запись
-        std::fstream filestream{file[0], std::ios::out};
-        // проходимся по массиву аудиофайлов
-        for (auto i : files)
-          // для каждого записываем имя и путь в разных строках
-          filestream << i.first << "\n" << i.second << "\n";
-        // закрываем файл
-        filestream.close();
-        // устанавливаем надпись имени плейлиста на выбранное имя файла без
-        // расшиирения
-        playlistbox.at(1).text(file[0].filename().replace_extension());
-      });
+  save_list.events().click([&] {
+    save_playlist(listsavedialog, files, playlistbox);
+  });
 
   // действия при клике на кнопку выбора режима повтора
   repeat.events().click([&repeat, &state, &music] {

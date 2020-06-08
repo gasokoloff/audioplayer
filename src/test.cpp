@@ -50,7 +50,7 @@ TEST_CASE("correctly inputs to pair") {
   sf::Music music;                                                             \
   nana::slider seeker{fm, true};                                               \
   nana::label lab{fm, ""};                                                     \
-  nana::button play_pause{fm, ""};
+  nana::button play_pause{fm, ""}
 
 TEST_CASE("correctly opens existing file") {
   MUSIC_INIT;
